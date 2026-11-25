@@ -3933,21 +3933,22 @@ function update(dt, t) {
   const B = stuck ? () => false : B0;
   if (!B(nx, player.z)) player.x = nx; else player.vx = 0;
   if (!B(player.x, nz)) player.z = nz; else player.vz = 0;
+  let airborne = false;
   {                                                          // jumping, landing on furniture, stepping off edges
     const ground = mode === 'inside' && !pose.active && !climb.active ? groundAt(player.x, player.z, player.jy) : 0;
     const lip = ground - player.jy;
     if (player.vy === 0 && Math.abs(lip) > 0.001 && Math.abs(lip) < STEP_UP + 0.01) {   // stepping up onto / down off a sill: ease, don't snap or fall
       player.jy += Math.sign(lip) * Math.min(Math.abs(lip), Math.max(0.8, Math.abs(lip) * 14) * dt);
     } else if (player.jy > ground + 0.001 || player.vy > 0) {
-      player.vy -= 9.8 * dt; player.jy += player.vy * dt;
+      airborne = true; player.vy -= 9.8 * dt; player.jy += player.vy * dt;
       if (mode === 'inside') { const top = ceilingAt(player.x, player.z) - HEAD_H; if (player.jy > top) { player.jy = Math.max(ground, top); if (player.vy > 0) { player.vy = 0; sfxClank(); shake = Math.max(shake, 0.04); } } }   // bonk on the door arch
       if (player.jy <= ground) { const hard = player.vy < -2; player.jy = ground; player.vy = 0; sfxStep(); if (hard) shake = Math.max(shake, 0.06); }
     } else player.jy = ground;
   }
   const moving = Math.hypot(player.vx, player.vz);
-  player.bob += moving * dt * 3.4;
+  if (!airborne) player.bob += moving * dt * 3.4;              // feet off the ground: no stride, no footsteps (landing makes its own thud)
   const step = Math.floor(player.bob / PI);
-  if (step !== player.lastStep) { player.lastStep = step; if (moving > 0.5) sfxStep(); }
+  if (step !== player.lastStep) { player.lastStep = step; if (moving > 0.5 && !airborne) sfxStep(); }
 
   // --- camera
   shake = Math.max(0, shake - dt * 0.8);
