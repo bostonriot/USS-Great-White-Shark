@@ -70,7 +70,8 @@
     background:rgba(0,0,0,.5); border:1px solid rgba(159,243,210,.4); padding:10px 16px; cursor:pointer; opacity:0; pointer-events:none; transition:opacity .8s; }
   #again.show { opacity:1; pointer-events:auto; }
   /* embedded on the landing page: just the title and a button styled like the game's main menu */
-  body.embed #gate .k, body.embed #gate p, body.embed #gate .hint { display:none; }
+  body.embed #gate .k, body.embed #gate p, body.embed #gate .hint, body.embed #gate h1 { display:none; }
+  body.embed #gate { background:linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.35)), url(resources/poster.jpg) center / cover #02101a; }
   body.embed #play { font-family:Georgia, "Times New Roman", serif; font-weight:normal; font-size:22px; color:#e8c86a; background:rgba(13,27,46,.88); border:2px solid #d9b45a;
     border-radius:0; padding:10px 0; width:240px; letter-spacing:.12em; box-shadow:none; transition:background .2s, color .2s; }
   body.embed #play:hover { background:#d9b45a; color:#0d1b2e; transform:none; box-shadow:none; }
@@ -117,7 +118,7 @@
   let ready = false, playing = false, t0 = 0, raf = 0;
 
   // ---------------------------------------------------------------- the game frame reports when every shot is warmed up
-  const markReady = () => { if (ready) return; ready = true; playBtn.disabled = false; playBtn.innerHTML = new URLSearchParams(location.search).has('embed') ? 'Watch Trailer' : '&#9654;&nbsp; PLAY'; };
+  const markReady = () => { if (ready) return; ready = true; playBtn.disabled = false; playBtn.innerHTML = new URLSearchParams(location.search).has('embed') ? 'WATCH' : '&#9654;&nbsp; PLAY'; };
   addEventListener('message', e => { if (!e.data) return; if (e.data.trailer === 'ready') markReady(); if (e.data.trailer === 'done') $('again').classList.add('show'); });
   setTimeout(markReady, 15000);                                   // never leave the button stuck
 
