@@ -1,0 +1,7 @@
+# publish only the website: everything else (backups, pics, archives, drafts) stays local
+/*
+!/.gitignore
+!/index.html
+!/game.html
+!/trailer.html
+!/resources/

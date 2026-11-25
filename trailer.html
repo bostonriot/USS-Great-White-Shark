@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USS Great White Shark — Trailer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root { --gold:#e8c86a; --gold2:#b8862f; --ink:#f2e6c4; --red:#ff5a3c; --bar:calc(max(0px, (100vh - 100vw / 2.39) / 2)); }
+  html, body { margin:0; height:100%; background:#000; overflow:hidden; color:var(--ink); font-family:Georgia, "Times New Roman", serif; }
+  body.nocursor { cursor:none; }
+  #game { position:fixed; inset:0; width:100%; height:100%; border:0; background:#000; pointer-events:none; transform-origin:50% 50%; }
+  /* film layers */
+  #dim { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; }
+  #vig { position:fixed; inset:0; pointer-events:none; background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); }
+  #grain { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; opacity:.055; mix-blend-mode:overlay; image-rendering:pixelated; }
+  .bar { position:fixed; left:0; right:0; height:0; background:#000; z-index:5; transition:height 1.2s cubic-bezier(.7,0,.2,1); }
+  .bar.top { top:0; } .bar.bot { bottom:0; }
+  body.playing .bar { height:var(--bar); }
+  #flash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:6; }
+  #black { position:fixed; inset:0; background:#000; opacity:1; pointer-events:none; z-index:6; transition:opacity .6s; }
+  /* titles */
+  #cards { position:fixed; inset:0; z-index:7; pointer-events:none; }
+  .card { position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); text-align:center; opacity:0; transition:opacity .45s ease, filter .9s ease, letter-spacing 2.6s cubic-bezier(.2,.7,.2,1), transform 2.6s cubic-bezier(.2,.7,.2,1); filter:blur(10px); padding:0 6vw; }
+  .card.on { opacity:1; filter:blur(0); }
+  .line { font-family:Cinzel, Georgia, serif; font-weight:500; font-size:clamp(26px, 4.2vw, 72px); letter-spacing:.22em; text-shadow:0 0 40px rgba(0,0,0,.9), 0 0 2px rgba(0,0,0,.9); }
+  .line.on { letter-spacing:.12em; }
+  .line { top:auto; bottom:calc(var(--bar) + 9vh); transform:none; }               /* lower third: keep faces clear */
+  .line.red { color:#ffb19e; text-shadow:0 0 30px rgba(255,60,30,.55), 0 0 2px #000; }
+  .mono { top:auto; bottom:calc(var(--bar) + 7vh); left:7vw; right:auto; transform:none; text-align:left; font-family:"Share Tech Mono", monospace; font-size:clamp(14px, 1.5vw, 24px); letter-spacing:.35em; color:#9ff3d2; white-space:pre; filter:none; text-shadow:0 0 12px rgba(95,240,176,.55); padding:0; transition:opacity .4s; }
+  .two { display:flex; flex-direction:column; gap:1.2vh; }
+  .two span { display:block; opacity:0; transition:opacity .6s ease .0s, filter .8s; filter:blur(8px); }
+  .two.on span.a { opacity:1; filter:blur(0); } .two.b span.b { opacity:1; filter:blur(0); }
+  .order { top:auto; bottom:calc(var(--bar) + 9vh); transform:none; filter:none; transition:opacity .12s, transform .5s cubic-bezier(.2,.9,.2,1); }
+  .order .k { font-family:"Share Tech Mono", monospace; font-size:clamp(11px, 1.05vw, 16px); letter-spacing:.5em; color:#9ff3d2; margin-bottom:1.2vh; text-shadow:0 0 10px rgba(0,0,0,.9); }
+  .order .w { font-family:Cinzel, Georgia, serif; font-weight:900; font-size:clamp(24px, 4.3vw, 80px); letter-spacing:.07em; line-height:1.05;
+    background:linear-gradient(180deg, #fff6d8 0%, var(--gold) 48%, var(--gold2) 100%); -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 4px 18px rgba(0,0,0,.9)); }
+  .order { transform:scale(1.18); } .order.on { transform:scale(1); }
+  .big { font-family:Cinzel, Georgia, serif; font-weight:900; font-size:clamp(44px, 11vw, 200px); letter-spacing:.7em; color:#fff; text-shadow:0 0 60px rgba(160,210,255,.45), 0 0 4px rgba(0,0,0,.8); padding-left:.7em; }
+  .big.on { letter-spacing:.28em; padding-left:.28em; }
+  .small { font-family:Georgia, serif; font-style:italic; font-size:clamp(18px, 2.2vw, 36px); letter-spacing:.06em; color:#d8e4ea; text-shadow:0 0 20px rgba(0,0,0,.9); }
+  #title { display:flex; flex-direction:column; align-items:center; gap:2.2vh; }
+  #title .t1 { font-family:Cinzel, Georgia, serif; font-weight:900; font-size:clamp(24px, 4.7vw, 92px); white-space:nowrap; letter-spacing:.32em; padding-left:.32em; line-height:1.05;
+    background:linear-gradient(180deg, #fffbe9 0%, var(--gold) 45%, #8f6420 100%); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 6px 30px rgba(0,0,0,.85)); transition:letter-spacing 3.4s cubic-bezier(.2,.7,.2,1), padding-left 3.4s cubic-bezier(.2,.7,.2,1); }
+  #title.on .t1 { letter-spacing:.14em; padding-left:.14em; }
+  #title .rule { width:0; height:2px; background:linear-gradient(90deg, transparent, var(--gold), transparent); transition:width 1.6s ease .5s; }
+  #title.on .rule { width:min(46vw, 760px); }
+  #title .t2 { font-family:"Share Tech Mono", monospace; font-size:clamp(12px, 1.4vw, 22px); letter-spacing:.8em; padding-left:.8em; color:#9ff3d2; opacity:0; transition:opacity 1s ease .9s; }
+  #title.on .t2 { opacity:1; }
+  #title .t3 { font-family:Georgia, serif; font-style:italic; font-size:clamp(16px, 1.9vw, 30px); color:#d8e4ea; opacity:0; transition:opacity 1.2s ease 1.5s; margin-top:1vh; }
+  #title.on .t3 { opacity:1; }
+  #title .t4 { font-family:Cinzel, Georgia, serif; font-weight:500; font-size:clamp(12px, 1.3vw, 20px); letter-spacing:.35em; padding-left:.35em; color:#c9b27a; opacity:0; transition:opacity 1.4s ease 2.6s; margin-top:2.2vh; text-shadow:0 0 14px rgba(0,0,0,.9); }
+  #title.on .t4 { opacity:1; }
+  /* gate + end */
+  #gate { position:fixed; inset:0; z-index:10; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:22px; text-align:center;
+    background:radial-gradient(ellipse at center, #0b1a26 0%, #000 75%); transition:opacity .8s; padding:16px; }
+  #gate.gone { opacity:0; pointer-events:none; }
+  #gate .k { font-family:"Share Tech Mono", monospace; letter-spacing:.6em; font-size:13px; color:#9ff3d2; padding-left:.6em; }
+  #gate h1 { margin:0; font-family:Cinzel, Georgia, serif; font-weight:900; font-size:clamp(28px, 5vw, 72px); letter-spacing:.16em; padding-left:.16em;
+    background:linear-gradient(180deg, #fffbe9 0%, var(--gold) 45%, #8f6420 100%); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #gate p { margin:0; font-style:italic; color:#9fb1ba; font-size:15px; }
+  #play { font-family:Cinzel, Georgia, serif; font-weight:700; font-size:20px; letter-spacing:.3em; padding:14px 34px 14px 40px; color:#0d1b2e; background:var(--gold);
+    border:0; border-radius:2px; cursor:pointer; box-shadow:0 0 40px rgba(232,200,106,.25); transition:transform .2s, box-shadow .2s, opacity .3s; }
+  #play:hover { transform:scale(1.04); box-shadow:0 0 60px rgba(232,200,106,.45); }
+  #play:disabled { opacity:.45; cursor:wait; transform:none; }
+  #gate .hint { font-family:"Share Tech Mono", monospace; font-size:12px; letter-spacing:.25em; color:#5d7480; }
+  #again { position:fixed; right:4vw; bottom:calc(var(--bar) + 3vh); z-index:9; font-family:"Share Tech Mono", monospace; letter-spacing:.3em; font-size:13px; color:#9ff3d2;
+    background:rgba(0,0,0,.5); border:1px solid rgba(159,243,210,.4); padding:10px 16px; cursor:pointer; opacity:0; pointer-events:none; transition:opacity .8s; }
+  #again.show { opacity:1; pointer-events:auto; }
+  @media (prefers-reduced-motion: reduce) { .card, #title .t1 { transition-duration:.01s !important; } }
+</style>
+</head>
+<body>
+<iframe id="game" src="game.html?trailer&amp;view=0.9,6.2,0,0" title="USS Great White Shark (trailer camera)" allow="autoplay; fullscreen"></iframe>
+<div id="dim"></div>
+<canvas id="grain" width="192" height="108"></canvas>
+<div id="vig"></div>
+<div class="bar top"></div><div class="bar bot"></div>
+<div id="cards">
+  <div class="card mono" id="c1"></div>
+  <div class="card line" id="c2">The scrubbers have failed.</div>
+  <div class="card line red" id="c3">Five minutes of air.</div>
+  <div class="card line two" id="c4"><span class="a">One captain.</span><span class="b">Eleven orders.</span></div>
+  <div class="card order" id="m0"><div class="k">ORDER 01 · SONAR</div><div class="w">LEARN THE WATERS</div></div>
+  <div class="card order" id="m1"><div class="k">ORDER 02 · TELEGRAPH</div><div class="w">ASK CLEAR QUESTIONS</div></div>
+  <div class="card order" id="m2"><div class="k">ORDER 04 · HELM</div><div class="w">DON&rsquo;T LINGER IN THE DEEP</div></div>
+  <div class="card order" id="m3"><div class="k">ORDER 05 · PERISCOPE</div><div class="w">GO SEE WHAT&rsquo;S OUT THERE</div></div>
+  <div class="card order" id="m4"><div class="k">ORDER 08 · BLOWER</div><div class="w">STAND YOUR GROUND</div></div>
+  <div class="card order" id="m5"><div class="k">ORDER 09 · VENT</div><div class="w">RELEASE THE PRESSURE</div></div>
+  <div class="card small" id="c5">Know when to rise.</div>
+  <div class="card big" id="c6">SURFACE</div>
+  <div class="card line two" id="c7"><span class="a">Commit. Communicate. Adapt.</span><span class="b">Never abandon your crew.</span></div>
+  <div class="card" id="title"><div class="t1">USS GREAT WHITE SHARK</div><div class="rule"></div><div class="t2">A SERVICE QUILT</div><div class="t3">Be like a Great White Shark.</div><div class="t4">By Louis Fredrick Miller</div></div>
+</div>
+<div id="flash"></div>
+<div id="black"></div>
+<button id="again" type="button">&#8635; REPLAY</button>
+<div id="gate">
+  <div class="k">A 34-SECOND TRAILER</div>
+  <h1>USS GREAT WHITE SHARK</h1>
+  <p>Sound on. Best in fullscreen.</p>
+  <button id="play" type="button" disabled>LOADING THE BOAT&hellip;</button>
+  <div class="hint">SPACE / ENTER TO PLAY &middot; R TO REPLAY &middot; F FULLSCREEN</div>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const game = $('game'), playBtn = $('play');
+  const HOLD = new URLSearchParams(location.search).has('at') ? +new URLSearchParams(location.search).get('at') : null;   // preview: freeze on one moment
+  let ready = false, playing = false, t0 = 0, raf = 0;
+
+  // ---------------------------------------------------------------- the game frame reports when every shot is warmed up
+  const markReady = () => { if (ready) return; ready = true; playBtn.disabled = false; playBtn.innerHTML = new URLSearchParams(location.search).has('embed') ? '&#9654;&nbsp; WATCH TRAILER' : '&#9654;&nbsp; PLAY'; };
+  addEventListener('message', e => { if (!e.data) return; if (e.data.trailer === 'ready') markReady(); if (e.data.trailer === 'done') $('again').classList.add('show'); });
+  setTimeout(markReady, 15000);                                   // never leave the button stuck
+
+  // ---------------------------------------------------------------- score: synthesized live (no audio files)
+  let ctx, master, revIn, carve;
+  function initAudio() {
+    if (ctx) { try { master.gain.cancelScheduledValues(0); } catch {} master.disconnect(); }
+    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0.85;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.3;
+    carve = ctx.createBiquadFilter(); carve.type = 'peaking'; carve.frequency.value = 2000; carve.Q.value = 0.7; carve.gain.value = 0;   // opens a hole for the voice
+    master.connect(carve).connect(comp).connect(ctx.destination);
+    const rev = ctx.createConvolver(), n = ctx.sampleRate * 4.5 | 0, b = ctx.createBuffer(2, n, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.6); }
+    rev.buffer = b; revIn = ctx.createGain(); const ro = ctx.createGain(); ro.gain.value = 0.6; revIn.connect(rev).connect(ro).connect(master);
+  }
+  let NB; const noiseBuf = () => { if (NB) return NB; const n = ctx.sampleRate * 2; NB = ctx.createBuffer(1, n, ctx.sampleRate); const d = NB.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; return NB; };
+  function route(node, dry = 1, wet = 0.3) { const a = ctx.createGain(); a.gain.value = dry; node.connect(a).connect(master); if (wet) { const w = ctx.createGain(); w.gain.value = wet; node.connect(w).connect(revIn); } }
+  function env(g, t, a, peak, hold, rel) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.setValueAtTime(peak, t + a + hold); g.gain.exponentialRampToValueAtTime(0.0001, t + a + hold + rel); }
+  function osc(type, f, t, dur) { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); o.start(t); o.stop(t + dur + 0.05); return o; }
+  function noise(t, dur) { const s = ctx.createBufferSource(); s.buffer = noiseBuf(); s.loop = true; s.start(t, Math.random()); s.stop(t + dur + 0.05); return s; }
+  function filt(type, f, q = 0.7) { const b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = f; b.Q.value = q; return b; }
+
+  const S = {
+    drone(t, t1) {                                               // the deep: two detuned saws, a sine, and sea rumble
+      const g = ctx.createGain(), lp = filt('lowpass', 150); lp.connect(g); route(g, 1, 0.35);
+      for (const [ty, f] of [['sawtooth', 36.7], ['sawtooth', 36.95], ['sine', 55]]) osc(ty, f, t, t1 - t).connect(lp);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.32, t + 2.2); g.gain.setValueAtTime(0.32, t1 - 0.06); g.gain.exponentialRampToValueAtTime(0.0001, t1);
+      const r = noise(t, t1 - t), rl = filt('lowpass', 95), rg = ctx.createGain(); r.connect(rl).connect(rg); route(rg, 1, 0.2);
+      rg.gain.setValueAtTime(0.0001, t); rg.gain.exponentialRampToValueAtTime(0.35, t + 2); rg.gain.setValueAtTime(0.35, t1 - 0.06); rg.gain.exponentialRampToValueAtTime(0.0001, t1);
+    },
+    ping(t, f = 1320, g = 0.3) { const o = osc('sine', f, t, 2), e = ctx.createGain(); o.connect(e); env(e, t, 0.004, g, 0.05, 1.7); route(e, 0.6, 1.1);
+      const o2 = osc('sine', f, t + 0.5, 1.5), e2 = ctx.createGain(); o2.connect(e2); env(e2, t + 0.5, 0.004, g * 0.25, 0.02, 1.3); route(e2, 0.3, 1); },
+    kick(t, g = 0.8) { const o = osc('sine', 85, t, 0.4), e = ctx.createGain(); o.frequency.exponentialRampToValueAtTime(36, t + 0.2); o.connect(e); env(e, t, 0.003, g, 0.02, 0.3); route(e, 1, 0.15); },
+    heart(t, g) { S.kick(t, g); S.kick(t + 0.17, g * 0.65); },
+    braam(t, dur, g, root = 36.7) {                               // brassy trailer horn: stacked saws through a sweeping low-pass
+      const lp = filt('lowpass', 160, 1.2), sh = ctx.createWaveShaper(), e = ctx.createGain();
+      const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; curve[i] = Math.tanh(2.4 * x); } sh.curve = curve;
+      lp.connect(sh).connect(e); route(e, 1, 0.55);
+      for (const [m, d] of [[1, 0], [1, 9], [1.5, -6], [2, 4], [2, -7], [3, 3]]) { const o = osc('sawtooth', root * m, t, dur + 0.6); o.detune.value = d; o.connect(lp); }
+      const sub = osc('sine', root, t, dur + 0.6), sg = ctx.createGain(); sub.connect(sg); env(sg, t, 0.02, g * 0.9, dur * 0.4, dur * 0.7); route(sg, 1, 0);
+      lp.frequency.setValueAtTime(160, t); lp.frequency.exponentialRampToValueAtTime(1500, t + 0.22); lp.frequency.exponentialRampToValueAtTime(380, t + dur);
+      env(e, t, 0.04, g * 0.5, dur * 0.35, dur * 0.75);
+    },
+    taiko(t, g = 0.7) { const o = osc('sine', 150, t, 0.6), e = ctx.createGain(); o.frequency.exponentialRampToValueAtTime(46, t + 0.35); o.connect(e); env(e, t, 0.003, g, 0.02, 0.5); route(e, 1, 0.45);
+      const n = noise(t, 0.15), bp = filt('bandpass', 220, 1.1), ne = ctx.createGain(); n.connect(bp).connect(ne); env(ne, t, 0.002, g * 0.5, 0.01, 0.12); route(ne, 1, 0.4); },
+    tick(t, g = 0.12) { const n = noise(t, 0.03), hp = filt('highpass', 5200), e = ctx.createGain(); n.connect(hp).connect(e); env(e, t, 0.001, g, 0.004, 0.025); route(e, 1, 0.2); },
+    klaxon(t, t1) { const bp = filt('bandpass', 1000, 0.8), e = ctx.createGain(); bp.connect(e); route(e, 1, 0.4); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(0.06, t + 0.04); e.gain.setValueAtTime(0.06, t1 - 0.05); e.gain.exponentialRampToValueAtTime(0.0001, t1);
+      const o = osc('square', 440, t, t1 - t); for (let k = 0, x = t; x < t1; x += 0.3, k++) o.frequency.setValueAtTime(k % 2 ? 349 : 440, x); o.connect(bp); },
+    torpedo(t) { S.kick(t, 1.0); const n = noise(t, 1.0), bp = filt('bandpass', 300, 1.2), e = ctx.createGain(); n.connect(bp).connect(e); bp.frequency.exponentialRampToValueAtTime(1600, t + 0.8); env(e, t, 0.02, 0.25, 0.2, 0.7); route(e, 1, 0.5);
+      const b = noise(t + 0.2, 1.8), bb = filt('bandpass', 700, 7), be = ctx.createGain(), lfo = osc('square', 17, t + 0.2, 1.8), lg = ctx.createGain(); lg.gain.value = 0.12; lfo.connect(lg).connect(be.gain);
+      b.connect(bb).connect(be); be.gain.setValueAtTime(0.12, t + 0.2); be.gain.linearRampToValueAtTime(0, t + 2); route(be, 1, 0.5); },
+    ostinato(t, t1) {                                            // driving 16ths on D, opening up as it builds
+      const pat = [73.4, 73.4, 110, 73.4, 87.3, 73.4, 110, 130.8], lp = filt('lowpass', 420, 4), e = ctx.createGain(); lp.connect(e); route(e, 1, 0.3);
+      lp.frequency.setValueAtTime(420, t); lp.frequency.exponentialRampToValueAtTime(2600, t1);
+      e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(0.16, t + 0.3); e.gain.linearRampToValueAtTime(0.3, t1 - 0.05); e.gain.linearRampToValueAtTime(0.0001, t1);
+      for (let x = t, i = 0; x < t1 - 0.05; x += 0.125, i++) { const o = osc('sawtooth', pat[i % 8], x, 0.12), ne = ctx.createGain(); o.connect(ne); env(ne, x, 0.004, 1, 0.02, 0.08); ne.connect(lp); }
+    },
+    riser(t, t1) { const n = noise(t, t1 - t), hp = filt('highpass', 300, 1.5), e = ctx.createGain(); n.connect(hp).connect(e); route(e, 1, 0.4);
+      hp.frequency.setValueAtTime(300, t); hp.frequency.exponentialRampToValueAtTime(7000, t1); e.gain.setValueAtTime(0.01, t); e.gain.exponentialRampToValueAtTime(0.35, t1 - 0.02); e.gain.linearRampToValueAtTime(0.0001, t1);
+      const o = osc('sawtooth', 110, t, t1 - t), lp = filt('lowpass', 1200), og = ctx.createGain(); o.frequency.exponentialRampToValueAtTime(880, t1); o.connect(lp).connect(og); route(og, 1, 0.4);
+      og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.09, t1 - 0.02); og.gain.linearRampToValueAtTime(0.0001, t1); },
+    whoosh(t1, dur = 0.9) { const t = t1 - dur, n = noise(t, dur), bp = filt('bandpass', 400, 0.9), e = ctx.createGain(); n.connect(bp).connect(e); route(e, 1, 0.6);
+      bp.frequency.setValueAtTime(400, t); bp.frequency.exponentialRampToValueAtTime(3500, t1); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(0.4, t1 - 0.01); e.gain.linearRampToValueAtTime(0.0001, t1 + 0.01); },
+    rumble(t, t1, g = 0.5) { const n = noise(t, t1 - t + 0.5), lp = filt('lowpass', 110), e = ctx.createGain(); n.connect(lp).connect(e); route(e, 1, 0.3);
+      e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(g, t1); e.gain.exponentialRampToValueAtTime(0.0001, t1 + 0.5); },
+    impact(t, g = 1) { S.braam(t, 3.2, 0.95 * g); const o = osc('sine', 62, t, 1.6), e = ctx.createGain(); o.frequency.exponentialRampToValueAtTime(27, t + 1.3); o.connect(e); env(e, t, 0.004, 1.1 * g, 0.05, 1.4); route(e, 1, 0.2);
+      const n = noise(t, 2.8), hp = filt('highpass', 2400), ne = ctx.createGain(); n.connect(hp).connect(ne); env(ne, t, 0.003, 0.3 * g, 0.05, 2.5); route(ne, 0.8, 0.9); S.taiko(t, 0.9 * g); },
+    pad(t, t1, notes, g = 0.1) { const lp = filt('lowpass', 1100), e = ctx.createGain(); lp.connect(e); route(e, 1, 0.8);
+      e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(g, t + 0.6); e.gain.setValueAtTime(g, t1 - 0.4); e.gain.exponentialRampToValueAtTime(0.0001, t1 + 0.4);
+      for (const f of notes) for (const d of [-7, 0, 7]) { const o = osc('sawtooth', f, t, t1 - t + 0.5); o.detune.value = d; o.connect(lp); } },
+    bell(t, f, g = 0.12) { for (const [m, k] of [[1, 1], [2.76, 0.35], [5.4, 0.15]]) { const o = osc('sine', f * m, t, 3), e = ctx.createGain(); o.connect(e); env(e, t, 0.003, g * k, 0.02, 2.6); route(e, 0.6, 1); } },
+  };
+  // recorded voice lines (resources/audio/voice), played as plain audio so they work straight from the folder
+  const LINES = [[5.9, 'whatwouldyoudo', 1.7], [7.9, 'ifyouhadtosurface', 2.3], [10.4, 'andtherewasnoonetheretohelpyou', 2.9], [15.8, 'wouldyoumakeit', 1.6], [17.4, 'orwouldyoufallliketherest', 1.98]]
+    .map(([at, f, len]) => { const a = new Audio('resources/audio/voice/' + f + '.mp3'); a.preload = 'auto'; a.volume = 1; return { at, a, len }; });
+  let voiceTimers = [];
+  function voices(T) {
+    voiceTimers.forEach(clearTimeout); voiceTimers = [];
+    for (const v of LINES) {
+      v.a.pause(); try { v.a.currentTime = 0; } catch {}
+      voiceTimers.push(setTimeout(() => v.a.play().catch(() => {}), v.at * 1000));
+      const a = T + v.at, b = T + v.at + v.len;                       // duck the score under the line and carve out the speech band
+      master.gain.setValueAtTime(0.85, a - 0.2); master.gain.linearRampToValueAtTime(0.22, a - 0.02);
+      master.gain.setValueAtTime(0.22, b); master.gain.linearRampToValueAtTime(0.85, b + 0.25);
+      carve.gain.setValueAtTime(0, a - 0.2); carve.gain.linearRampToValueAtTime(-10, a - 0.02);
+      carve.gain.setValueAtTime(-10, b); carve.gain.linearRampToValueAtTime(0, b + 0.25);
+    }
+  }
+  function score(T) {
+    S.drone(T, T + 17.35); S.ping(T + 0.35); S.ping(T + 2.55, 990, 0.22);
+    S.braam(T + 3.2, 2.2, 0.32);
+    for (let x = 3.25, gap = 0.9; x < 8.0; x += gap, gap = Math.max(0.42, gap * 0.9)) S.heart(T + x, 0.55 + (x - 3.2) * 0.06);
+    for (let x = 3.2; x < 8.0; x += 0.5) S.tick(T + x);
+    S.braam(T + 5.6, 2.3, 0.5);
+    S.whoosh(T + 8.0, 0.5); S.braam(T + 8.0, 1.1, 0.8, 41.2); S.klaxon(T + 8.0, T + 9.2);
+    S.taiko(T + 9.2, 0.7); S.torpedo(T + 9.45);
+    S.impact(T + 11.5, 0.4); S.ostinato(T + 11.5, T + 17.35);
+    for (let i = 0; i < 6; i++) { S.taiko(T + 11.5 + i, 0.55 + i * 0.06); S.taiko(T + 12.0 + i, 0.3 + i * 0.05); if (i >= 3) { S.taiko(T + 11.75 + i, 0.3); S.taiko(T + 12.25 + i, 0.3); } }
+    S.riser(T + 15.4, T + 17.35);
+    S.rumble(T + 17.8, T + 19.4, 0.55); S.whoosh(T + 19.4, 1.2);
+    S.impact(T + 19.4, 1.15); S.impact(T + 20.8, 0.55);
+    S.pad(T + 20.9, T + 23.5, [73.4, 110, 146.8, 174.6], 0.07);
+    S.braam(T + 23.5, 2, 0.45); S.pad(T + 23.5, T + 25.2, [58.3, 87.3, 116.5, 146.8], 0.08); S.pad(T + 25.2, T + 26.4, [87.3, 130.8, 174.6, 220], 0.09); S.pad(T + 26.4, T + 27.0, [65.4, 98, 130.8, 164.8], 0.1);
+    for (const x of [23.5, 24.5, 25.25, 25.75, 26.25, 26.5, 26.75, 26.875]) S.taiko(T + x, 0.45 + (x - 23.5) * 0.08);
+    S.whoosh(T + 27.0, 1.0);
+    S.impact(T + 27.0, 1.2); S.pad(T + 27.0, T + 33.6, [73.4, 110, 146.8, 174.6, 220, 293.7], 0.09); S.drone(T + 28.5, T + 34.2);
+    S.bell(T + 27.7, 587.3); S.bell(T + 28.3, 880, 0.09); S.bell(T + 28.9, 698.5, 0.08); S.bell(T + 30.6, 587.3, 0.07); S.bell(T + 31.8, 440, 0.06);
+    master.gain.setValueAtTime(0.85, T + 32.2); master.gain.linearRampToValueAtTime(0.0001, T + 35.5);
+  }
+
+  // ---------------------------------------------------------------- picture: titles, flashes, shake, grain
+  const cards = [
+    ['c2', 3.5, 5.35], ['c3', 5.9, 7.85], ['c4', 9.35, 11.35], ['c5', 17.75, 19.25], ['c6', 21.0, 23.3], ['c7', 23.75, 26.85], ['title', 27.05, 1e9],
+    ...[0, 1, 2, 3, 4, 5].map(i => ['m' + i, 11.55 + i, 12.42 + i]),
+  ];
+  const second = { c4: 10.15, c7: 24.95 };                        // two-line cards: when the second line lands
+  const flashes = [[3.2, 0.18], [8.0, 0.45], [11.5, 0.4], [19.4, 1], [20.8, 0.45], [23.5, 0.3], [27.0, 0.95]];
+  const shakes = [[8.0, 6], [9.45, 5], [11.5, 5], [15.6, 3], [15.95, 3], [16.25, 3], [19.4, 16], [20.8, 9], [27.0, 10]];
+  const MONO = 'NORTH ATLANTIC\n240 METERS BELOW\n03:47';
+  const grain = $('grain'), gg = grain.getContext('2d'), gimg = gg.createImageData(grain.width, grain.height);
+  function frame() {
+    const t = HOLD != null ? HOLD : (performance.now() - t0) / 1000;
+    // titles
+    for (const [id, a, b] of cards) { const el = $(id), on = t >= a && t < b; if (el.classList.contains('on') !== on) el.classList.toggle('on', on); if (second[id]) el.classList.toggle('b', on && t >= second[id]); }
+    const typed = t < 0.35 || t > 2.95 ? '' : MONO.slice(0, Math.floor((t - 0.35) * 22));
+    const c1 = $('c1'); if (c1.textContent !== typed) c1.textContent = typed; c1.style.opacity = typed ? 1 : 0;
+    // flashes, the hard cut to black before the breach, the dim under the end title, the fade out
+    let fl = 0; for (const [a, k] of flashes) { const d = t - a; if (d >= 0 && d < 0.5) fl = Math.max(fl, k * Math.pow(1 - d / 0.5, 2)); }
+    $('flash').style.opacity = fl;
+    $('black').style.transition = 'none';
+    $('black').style.opacity = t < 0.15 ? 1 - t / 0.15 : (t > 17.32 && t < 17.62) ? 1 : 0;
+    $('dim').style.opacity = t > 26.95 ? Math.min(0.5, (t - 26.95) * 0.6) : 0;
+    let sk = 0; for (const [a, px] of shakes) { const d = t - a; if (d >= 0 && d < 0.45) sk = Math.max(sk, px * (1 - d / 0.45)); }
+    game.style.transform = sk ? `translate(${(Math.random() - .5) * sk}px, ${(Math.random() - .5) * sk}px) scale(${1 + sk * 0.0015})` : '';
+    // film grain
+    const d = gimg.data; for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } gg.putImageData(gimg, 0, 0);
+    if (t > 34.6 && playing) end();
+    raf = requestAnimationFrame(frame);                            // keeps running: the end title stays up over the live ocean
+  }
+  function end() { playing = false; document.body.classList.remove('nocursor'); $('again').classList.add('show'); }
+
+  const EMBED = new URLSearchParams(location.search).has('embed');
+  if (EMBED) document.querySelector('#gate p').textContent = 'Sound on. Press F for fullscreen.';
+  function play() {
+    if (!ready || playing) return;
+    const el = document.documentElement;
+    if (!EMBED && !document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});   // embedded on the landing page: plays in place
+    initAudio(); if (ctx.state === 'suspended') ctx.resume();
+    $('gate').classList.add('gone'); $('again').classList.remove('show');
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('on', 'b'));
+    // give fullscreen a moment to settle so the first frames aren't spent resizing
+    setTimeout(() => {
+      playing = true; document.body.classList.add('playing', 'nocursor');
+      game.contentWindow.postMessage({ trailer: 'start' }, '*');
+      t0 = performance.now(); score(ctx.currentTime + 0.02); voices(ctx.currentTime + 0.02);
+      cancelAnimationFrame(raf); raf = requestAnimationFrame(frame);
+    }, 450);
+  }
+  playBtn.addEventListener('click', play);
+  $('again').addEventListener('click', play);
+  addEventListener('keydown', e => {
+    if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); play(); }
+    if (e.code === 'KeyR') play();
+    if (e.code === 'KeyF') { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); }
+  });
+  $('black').style.opacity = 0;                                    // (behind the gate until play)
+  if (HOLD != null) { game.src = 'game.html?trailer&view=0.9,6.2,0,0&at=' + HOLD; $('gate').classList.add('gone'); document.body.classList.add('playing'); raf = requestAnimationFrame(frame); }
+})();
+</script>
+</body>
+</html>
