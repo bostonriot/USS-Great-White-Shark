@@ -69,6 +69,11 @@
   #again { position:fixed; right:4vw; bottom:calc(var(--bar) + 3vh); z-index:9; font-family:"Share Tech Mono", monospace; letter-spacing:.3em; font-size:13px; color:#9ff3d2;
     background:rgba(0,0,0,.5); border:1px solid rgba(159,243,210,.4); padding:10px 16px; cursor:pointer; opacity:0; pointer-events:none; transition:opacity .8s; }
   #again.show { opacity:1; pointer-events:auto; }
+  /* embedded on the landing page: just the title and a button styled like the game's main menu */
+  body.embed #gate .k, body.embed #gate p, body.embed #gate .hint { display:none; }
+  body.embed #play { font-family:Georgia, "Times New Roman", serif; font-weight:normal; font-size:22px; color:#e8c86a; background:rgba(13,27,46,.88); border:2px solid #d9b45a;
+    border-radius:0; padding:10px 0; width:240px; letter-spacing:.12em; box-shadow:none; transition:background .2s, color .2s; }
+  body.embed #play:hover { background:#d9b45a; color:#0d1b2e; transform:none; box-shadow:none; }
   @media (prefers-reduced-motion: reduce) { .card, #title .t1 { transition-duration:.01s !important; } }
 </style>
 </head>
@@ -112,7 +117,7 @@
   let ready = false, playing = false, t0 = 0, raf = 0;
 
   // ---------------------------------------------------------------- the game frame reports when every shot is warmed up
-  const markReady = () => { if (ready) return; ready = true; playBtn.disabled = false; playBtn.innerHTML = new URLSearchParams(location.search).has('embed') ? '&#9654;&nbsp; WATCH TRAILER' : '&#9654;&nbsp; PLAY'; };
+  const markReady = () => { if (ready) return; ready = true; playBtn.disabled = false; playBtn.innerHTML = new URLSearchParams(location.search).has('embed') ? 'Watch Trailer' : '&#9654;&nbsp; PLAY'; };
   addEventListener('message', e => { if (!e.data) return; if (e.data.trailer === 'ready') markReady(); if (e.data.trailer === 'done') $('again').classList.add('show'); });
   setTimeout(markReady, 15000);                                   // never leave the button stuck
 
@@ -256,7 +261,7 @@
   function end() { playing = false; document.body.classList.remove('nocursor'); $('again').classList.add('show'); }
 
   const EMBED = new URLSearchParams(location.search).has('embed');
-  if (EMBED) document.querySelector('#gate p').textContent = 'Sound on. Press F for fullscreen.';
+  if (EMBED) document.body.classList.add('embed');
   function play() {
     if (!ready || playing) return;
     const el = document.documentElement;
