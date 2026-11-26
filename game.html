@@ -1108,6 +1108,7 @@ function bulkhead(z, frontName, backName, openAngle = PI * 0.92) {
     box(0.1, 0.025, 0.04, M.dark, 0.04, 0.35, 0, ex);                       // squeeze handle
     box(0.2, 0.04, 0.03, M.steel, 0, 0.05, -Math.sign(dz) * 0.09, ex);      // wall bracket strap
     interactive(ex, 'Fire extinguisher — give it a test squeeze', () => sprayExtinguisher(ex));
+    const ox = dz > 0 ? -1.05 : 1.05; obstacles.push({ minX: ox, maxX: ox, minZ: z + dz, maxZ: z + dz, top: Infinity, r: 0.1 });   // solid: you can't walk through it
   }
   mirrorBlock(0.6, 3, z - 0.11, z + 0.11);
   // the wall above the doorway: blocks you only if your head would be above the arch at that point (so no jumping through the wall)
@@ -1369,17 +1370,23 @@ poster('shark2', 0, 2.12, 19.97, PI, 1.5);          // engine room, stern wall a
     sw.ax = clamp(sw.ax + sw.vx * st, -0.9, 0.9); sw.az = clamp(sw.az + sw.vz * st, -0.9, 0.9);
     // where the bag's axis is now: check its top, middle and bottom against the curved hull, the bulkhead and the lockers
     const dx = Math.sin(sw.ax), dy = -Math.cos(sw.ax) * Math.cos(sw.az), dz = Math.cos(sw.ax) * Math.sin(sw.az), s0 = -ringY + 0.2;
-    let hit = false;
+    let hit = false, hitMe = false;
     for (const d of [s0, s0 + BH * 0.5, s0 + BH]) {
       const x = PX + dx * d, y = PY + dy * d, z = PZ + dz * d;
       if (Math.hypot(x, y - CY) + BR > R - 0.04) hit = true;                       // hull plating
       if (z + BR > -4.14) hit = true;                                               // forward bulkhead (EDC poster wall)
       if (x + BR > 1.74 && z - BR < -6.24 && z > -7.3) hit = true;                  // lockers
-      if (mode === 'inside' && y > player.jy - 0.05 && y < player.jy + HEAD_H && Math.hypot(x - player.x, z - player.z) < BR + PLAYER_R - 0.01) hit = true;   // it swings into you
+      if (mode === 'inside' && y > player.jy - 0.05 && y < player.jy + HEAD_H && Math.hypot(x - player.x, z - player.z) < BR + PLAYER_R - 0.01) hitMe = true;   // it swings into you
     }
-    if (hit) {
+    if (hitMe && !hit) {
+      // leaning on you: it comes to rest against you (no bounce, no twist), so standing still next to it stays still
       const spd = Math.hypot(sw.vx, sw.vz) * L;
-      sw.ax = pax; sw.az = paz; sw.vx *= -0.35; sw.vz *= -0.35; sw.vt += (Math.random() - 0.5) * 1.5;
+      sw.ax = pax; sw.az = paz; sw.vx *= spd > 0.6 ? -0.2 : 0; sw.vz *= spd > 0.6 ? -0.2 : 0;
+      if (spd > 0.6 && performance.now() - (sw.lastHit || 0) > 250) { sw.lastHit = performance.now(); noiseBurst(0.1, Math.min(0.35, spd * 0.18), 'lowpass', 400, 120, { brown: true }); }
+    } else if (hit || hitMe) {
+      const spd = Math.hypot(sw.vx, sw.vz) * L;
+      const pin = sw.leaning ? 0 : -0.35;                                         // pinned between you and the wall: it just stops
+      sw.ax = pax; sw.az = paz; sw.vx *= pin; sw.vz *= pin; if (spd > 0.4 && !sw.leaning) sw.vt += (Math.random() - 0.5) * 1.5;
       if (spd > 0.4 && performance.now() - (sw.lastHit || 0) > 150) { sw.lastHit = performance.now(); noiseBurst(0.1, Math.min(0.5, spd * 0.25), 'lowpass', 400, 120, { brown: true }); tone('sine', 80, 50, 0.15, Math.min(0.25, spd * 0.12)); }
     }
     sw.vt += (-6 * sw.tw - sw.vt * 0.8) * st; sw.tw += sw.vt * st;
@@ -1388,11 +1395,13 @@ poster('shark2', 0, 2.12, 19.97, PI, 1.5);          // engine room, stern wall a
     const ex = Math.sin(sw.ax), ez = Math.cos(sw.ax) * Math.sin(sw.az), s1 = -ringY + 0.2;
     bagBlks.forEach((b, i) => { const d = s1 + (i + 0.5) / 3 * BH; b.minX = b.maxX = PX + ex * d; b.minZ = b.maxZ = PZ + ez * d; });
     // walk into it and you shove it: it swings away from you, and back
+    sw.leaning = false;
     if (mode === 'inside' && (player.wx || player.wz)) for (const b of bagBlks) {
       const ddx = b.minX - player.x, ddz = b.minZ - player.z, dist = Math.hypot(ddx, ddz);
       if (dist > 1e-4 && dist < PLAYER_R + BR + 0.03) {
         const nx = ddx / dist, nz = ddz / dist, into = player.wx * nx + player.wz * nz;
         if (into > 0) { sw.vx += nx * into * 1.2 * st / 3; sw.vz += nz * into * 1.2 * st / 3; }
+        sw.leaning = true; const damp = Math.exp(-14 * st / 3); sw.vx *= damp; sw.vz *= damp; sw.vt *= damp;   // leaning on it: your body soaks up the swing, so it settles against you
       }
     }
   });
@@ -3409,6 +3418,16 @@ function blockedOut(x, z) {
   const ex = x / 0.42, ez = (z + 1) / 2.35;                        // bridge cockpit
   return ex * ex + ez * ez > 1;                                    // (no collision on the periscope mast: you'd get stuck coming up the ladder)
 }
+// how deep you'd be inside the round things (the heavy bag, extinguishers): used to let you back out of an overlap, never further in
+function overlapDepth(x, z, feet = player.jy) {
+  let d = 0;
+  for (const o of obstacles) {
+    if (!o.r || o.off || feet >= o.top - 0.06) continue;
+    const cx = clamp(x, o.minX, o.maxX), cz = clamp(z, o.minZ, o.maxZ);
+    d = Math.max(d, PLAYER_R + o.r - Math.hypot(x - cx, z - cz));
+  }
+  return d;
+}
 function blocked(x, z, feet = player.jy) {   // anything you're standing above doesn't block you
   if (Math.abs(x) > 2.3 - PLAYER_R) return true;
   if (z < -HALF + 0.35 || z > HALF - 0.35) return true;
@@ -3932,7 +3951,8 @@ function update(dt, t) {
   const nx = player.x + player.vx * dt, nz = player.z + player.vz * dt;
   const B0 = mode === 'inside' ? blocked : blockedOut;
   const stuck = mode === 'inside' && blocked(player.x, player.z);      // already overlapping something? let yourself walk out
-  const B = stuck ? () => false : B0;
+  const d0 = stuck ? overlapDepth(player.x, player.z) : 0;
+  const B = stuck ? (x, z) => overlapDepth(x, z) > d0 + 1e-4 : B0;   // overlapping (the bag swung into you): you can only move out of it
   if (!B(nx, player.z)) player.x = nx; else player.vx = 0;
   if (!B(player.x, nz)) player.z = nz; else player.vz = 0;
   let airborne = false;
