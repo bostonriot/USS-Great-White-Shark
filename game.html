@@ -82,6 +82,8 @@
   #menu.controls .mbtns { display:none; }
   #menu.controls .mcontrols { display:flex; }
   #menu .mcontrols .mission, #menu .mcontrols .keys { margin:0; }
+  #menu .mcontrols .keys-pad, body.pad #menu .mcontrols .keys-kb { display:none !important; }   /* controller plugged in: show its buttons instead */
+  body.pad #menu .mcontrols .keys-pad { display:grid !important; }
   /* readable backdrops for the caption and the controls hint */
   #caption { width:auto; max-width:min(880px, calc(100vw - 32px)); padding:12px 34px 14px; border-radius:6px;
     background:linear-gradient(180deg, rgba(10,20,34,.58), rgba(6,12,22,.78)); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
@@ -343,7 +345,7 @@
     <div class="mscores"><div class="mtitle">FASTEST SURFACINGS</div><ol class="board" id="mBoard"></ol><button id="mBack2">Back</button></div>
     <div class="mcontrols">
       <p class="mission">Bring the boat up from 240 m. Follow the caption at the bottom of the screen and the green marker through the 11-step surfacing procedure, then open the upper hatch and climb out on deck.</p>
-      <div class="keys">
+      <div class="keys keys-kb">
         <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Walk</span>
         <span><kbd>Space</kbd></span><span>Jump</span>
         <span><kbd>Shift</kbd></span><span>Run</span>
@@ -353,6 +355,17 @@
         <span><kbd>Click</kbd></span><span>Punch (left / right hand)</span>
         <span><kbd>Wheel</kbd></span><span>Zoom (periscope, binoculars on deck)</span>
         <span><kbd>Esc</kbd></span><span>Pause</span>
+      </div>
+      <div class="keys keys-pad">
+        <span><i class="xb stk">L</i></span><span>Walk</span>
+        <span><i class="xb f a">A</i></span><span>Jump</span>
+        <span><i class="xb bump">LB</i> <i class="xb stk">L</i></span><span>Run (or click the left stick)</span>
+        <span><i class="xb stk">R</i></span><span>Look around</span>
+        <span><i class="xb f x">X</i></span><span>Use whatever you're looking at &middot; sit, lie down, get up</span>
+        <span><i class="xb f y">Y</i></span><span>Flashlight</span>
+        <span><i class="xb trig">LT</i> <i class="xb trig">RT</i></span><span>Punch (left / right hand)</span>
+        <span><i class="xb bump">RB</i></span><span>Zoom (periscope: <i class="xb bump">LB</i><i class="xb bump">RB</i>, binoculars on deck)</span>
+        <span><i class="xb menu">&equiv;</i></span><span>Pause</span>
       </div>
       <button id="mBack">Back</button>
     </div>
@@ -3525,10 +3538,16 @@ document.addEventListener('keydown', e => {
   if (opening.active || surf.active) { keys[e.code] = false; return; }   // cutscenes play through
   if (after.open) { if (e.code === 'Enter' || e.code === 'Escape') closeAfter(); return; }
   if (warn.open) { if (e.code === 'Enter') closePartyWarning(true); else if (e.code === 'Escape' || e.code === 'Backspace') closePartyWarning(false); return; }
+  if (e.code === 'Escape' && e.isTrusted && !e.repeat && !locked && !menu.active && gamePaused && intro.style.display !== 'none') {
+    // pause menu open: Esc closes it again. Browsers won't let the Esc key re-capture the mouse, so the game resumes and
+    // your next click grabs it (mouse look already works until then)
+    setLockState(true); try { const r = renderer.domElement.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch {}
+    return;
+  }
   if (!locked || e.repeat) return;
   if (lesson.active) { if (/^(KeyE|Space|Enter|NumpadEnter)$/.test(e.code)) { lesson.quilt ? closeQuilt() : closeLesson(); } return; }
   if ($('victory').classList.contains('show') && hs.pending !== null) { if (e.code === 'Escape') { cancelHighScore(); return; } hsKey(e); return; }   // typing a name
-  if (e.code === 'Escape' && e.isTrusted && !document.pointerLockElement && !menu.active) { setLockState(false); return; }   // controller mode: Esc still pauses
+  if (e.code === 'Escape' && e.isTrusted && !document.pointerLockElement && !menu.active) { setLockState(false); return; }   // controller / un-captured mouse: Esc pauses
   if ($('victory').classList.contains('show') && e.code === 'KeyE') { hideVictory(); return; }
   if (climb.active || sclimb.active || sea.falling) return;
   if (window.__phone && window.__phone.onCall && e.code === 'KeyE' && (!current || current === window.__phone.interact)) { window.__phone.hangUp(); return; }
@@ -5319,7 +5338,7 @@ let gamePaused = false, simT = 0;
 function animate() {
   requestAnimationFrame(animate);
   const rawDt = clock.getDelta();
-  pollPad(Math.min(rawDt, 0.05)); updateTips(Math.min(rawDt, 0.05)); if (!gamePaused && !menu.active) updateDynRes(rawDt); if (!gamePaused && !lesson.active && !menu.active) updateShadows(rawDt);
+  pollPad(Math.min(rawDt, 0.05)); updateTips(Math.min(rawDt, 0.05)); if (!gamePaused && !lesson.active && !menu.active) updateShadows(rawDt);
   if (gamePaused || lesson.active) { render(); return; }      // frozen frame behind the pause menu / a quilt card
   const dt = Math.min(rawDt, 0.05); simT += dt; const t = simT;
   update(dt, t); if (menu.active) updateMenu(dt, t);
@@ -5541,16 +5560,6 @@ block(BIKE.x1, BIKE.x2, BIKE.wall - 0.8, BIKE.wall, 0.86);   // you bump into it
 function updateShadows(dt) {
   if (!shadows.on) return;
   if (shadows.near && shadows.near.length) { shadows.flip = !shadows.flip; const L = shadows.near[shadows.flip ? 0 : Math.min(1, shadows.near.length - 1)]; L.l.shadow.needsUpdate = true; }
-  // performance guard: if frames stay slow (>45 ms) for a few seconds, fall back to no shadows
-  // (ignores the first seconds of play, while shaders compile, and judges a running average rather than single hitches)
-  shadows.warm += dt; shadows.ema += (Math.min(dt, 0.2) - shadows.ema) * 0.05;
-  if (shadows.warm > 10) shadows.slow = shadows.ema > 0.05 ? shadows.slow + dt : Math.max(0, shadows.slow - dt);
-  if (shadows.slow > 5 && !shadows.keep && ao.on) { ao.on = false; shadows.slow = 0; toast('Ambient occlusion switched off to keep things smooth.'); markGfx('medium'); return; }   // the first thing to go
-  if (shadows.slow > 5 && !shadows.keep) {
-    shadows.on = false; renderer.shadowMap.enabled = false; for (const L of lights) L.l.castShadow = false; extSun.castShadow = false; flash.castShadow = false;
-    const redo = r => r.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); }); redo(world); redo(ext);
-    toast('Shadows switched off to keep things smooth.'); markGfx('low'); return;
-  }
   shadows.acc += dt; if (shadows.acc < 0.25) return; shadows.acc = 0;
   // the two lamps closest to you redraw their shadows every frame (moving bag, doors, hoist, you); the rest take turns refreshing
   const cp = camera.position, near = lights.map(L => [L, L.l.position.distanceToSquared(cp)]).sort((a, b) => a[1] - b[1]).slice(0, 2).map(a => a[0]);
@@ -5562,7 +5571,7 @@ function updateShadows(dt) {
 //  High:   everything (lamp shadows 512 px, sun 2048, ambient occlusion, bloom, full resolution)
 //  Medium: no ambient occlusion, half-size shadow maps, full resolution
 //  Low:    no shadows, no ambient occlusion, no bloom, 75% resolution
-// Picking one yourself is remembered in this browser and stops the automatic "keep it smooth" downgrades.
+// Picking one is remembered in this browser. (No automatic downgrades: the level you pick is the level you get.)
 const GFX_KEY = 'gwsGraphics';
 function markGfx(level) { document.querySelectorAll('.gfx button').forEach(b => b.classList.toggle('on', b.dataset.gfx === level)); }
 function redoMaterials() { const redo = r => r.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); }); redo(world); redo(ext); }
@@ -5592,7 +5601,7 @@ function applyGfx(level, byUser) {
 document.querySelectorAll('.gfx button').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); if (typeof sfxClick === 'function') sfxClick(); applyGfx(b.dataset.gfx, true); }));
 {
   let saved = null; try { saved = localStorage.getItem(GFX_KEY); } catch {}
-  if (new URLSearchParams(location.search).has('trailer') || !['low', 'medium', 'high'].includes(saved)) markGfx('high');   // default: everything on (auto-downgrades if it struggles)
+  if (new URLSearchParams(location.search).has('trailer') || !['low', 'medium', 'high'].includes(saved)) markGfx('high');   // default: everything on
   else applyGfx(saved, false), shadows.keep = true;
 }
 
