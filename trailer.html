@@ -130,7 +130,10 @@
     master = ctx.createGain(); master.gain.value = 0.85;
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.3;
     carve = ctx.createBiquadFilter(); carve.type = 'peaking'; carve.frequency.value = 2000; carve.Q.value = 0.7; carve.gain.value = 0;   // opens a hole for the voice
-    master.connect(carve).connect(comp).connect(ctx.destination);
+    // safety limiter after the bus compressor: catches any peak that would still clip
+    const lim = ctx.createDynamicsCompressor(); lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.1;
+    const out = ctx.createGain(); out.gain.value = 0.9;
+    master.connect(carve).connect(comp).connect(lim).connect(out).connect(ctx.destination);
     const rev = ctx.createConvolver(), n = ctx.sampleRate * 4.5 | 0, b = ctx.createBuffer(2, n, ctx.sampleRate);
     for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.6); }
     rev.buffer = b; revIn = ctx.createGain(); const ro = ctx.createGain(); ro.gain.value = 0.6; revIn.connect(rev).connect(ro).connect(master);
@@ -153,7 +156,7 @@
     ping(t, f = 1320, g = 0.3) { const o = osc('sine', f, t, 2), e = ctx.createGain(); o.connect(e); env(e, t, 0.004, g, 0.05, 1.7); route(e, 0.6, 1.1);
       const o2 = osc('sine', f, t + 0.5, 1.5), e2 = ctx.createGain(); o2.connect(e2); env(e2, t + 0.5, 0.004, g * 0.25, 0.02, 1.3); route(e2, 0.3, 1); },
     kick(t, g = 0.8) { const o = osc('sine', 85, t, 0.4), e = ctx.createGain(); o.frequency.exponentialRampToValueAtTime(36, t + 0.2); o.connect(e); env(e, t, 0.003, g, 0.02, 0.3); route(e, 1, 0.15); },
-    heart(t, g) { S.kick(t, g); S.kick(t + 0.17, g * 0.65); },
+    heart() {},                                              // (kick drum heartbeat removed: it clipped)
     braam(t, dur, g, root = 36.7) {                               // brassy trailer horn: stacked saws through a sweeping low-pass
       const lp = filt('lowpass', 160, 1.2), sh = ctx.createWaveShaper(), e = ctx.createGain();
       const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; curve[i] = Math.tanh(2.4 * x); } sh.curve = curve;
@@ -168,7 +171,7 @@
     tick(t, g = 0.12) { const n = noise(t, 0.03), hp = filt('highpass', 5200), e = ctx.createGain(); n.connect(hp).connect(e); env(e, t, 0.001, g, 0.004, 0.025); route(e, 1, 0.2); },
     klaxon(t, t1) { const bp = filt('bandpass', 1000, 0.8), e = ctx.createGain(); bp.connect(e); route(e, 1, 0.4); e.gain.setValueAtTime(0.0001, t); e.gain.exponentialRampToValueAtTime(0.06, t + 0.04); e.gain.setValueAtTime(0.06, t1 - 0.05); e.gain.exponentialRampToValueAtTime(0.0001, t1);
       const o = osc('square', 440, t, t1 - t); for (let k = 0, x = t; x < t1; x += 0.3, k++) o.frequency.setValueAtTime(k % 2 ? 349 : 440, x); o.connect(bp); },
-    torpedo(t) { S.kick(t, 1.0); const n = noise(t, 1.0), bp = filt('bandpass', 300, 1.2), e = ctx.createGain(); n.connect(bp).connect(e); bp.frequency.exponentialRampToValueAtTime(1600, t + 0.8); env(e, t, 0.02, 0.25, 0.2, 0.7); route(e, 1, 0.5);
+    torpedo(t) { const n = noise(t, 1.0), bp = filt('bandpass', 300, 1.2), e = ctx.createGain(); n.connect(bp).connect(e); bp.frequency.exponentialRampToValueAtTime(1600, t + 0.8); env(e, t, 0.02, 0.25, 0.2, 0.7); route(e, 1, 0.5);
       const b = noise(t + 0.2, 1.8), bb = filt('bandpass', 700, 7), be = ctx.createGain(), lfo = osc('square', 17, t + 0.2, 1.8), lg = ctx.createGain(); lg.gain.value = 0.12; lfo.connect(lg).connect(be.gain);
       b.connect(bb).connect(be); be.gain.setValueAtTime(0.12, t + 0.2); be.gain.linearRampToValueAtTime(0, t + 2); route(be, 1, 0.5); },
     ostinato(t, t1) {                                            // driving 16ths on D, opening up as it builds
