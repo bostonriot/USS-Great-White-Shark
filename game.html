@@ -1108,7 +1108,7 @@ function bulkhead(z, frontName, backName, openAngle = PI * 0.92) {
     box(0.1, 0.025, 0.04, M.dark, 0.04, 0.35, 0, ex);                       // squeeze handle
     box(0.2, 0.04, 0.03, M.steel, 0, 0.05, -Math.sign(dz) * 0.09, ex);      // wall bracket strap
     interactive(ex, 'Fire extinguisher — give it a test squeeze', () => sprayExtinguisher(ex));
-    const ox = dz > 0 ? -1.05 : 1.05; obstacles.push({ minX: ox, maxX: ox, minZ: z + dz, maxZ: z + dz, top: Infinity, r: 0.1 });   // solid: you can't walk through it
+    const ox = dz > 0 ? -1.05 : 1.05; obstacles.push({ minX: ox, maxX: ox, minZ: z + dz, maxZ: z + dz, top: 0.86, r: 0.1 });   // solid, and you can jump up and stand on it
   }
   mirrorBlock(0.6, 3, z - 0.11, z + 0.11);
   // the wall above the doorway: blocks you only if your head would be above the arch at that point (so no jumping through the wall)
@@ -1370,20 +1370,31 @@ poster('shark2', 0, 2.12, 19.97, PI, 1.5);          // engine room, stern wall a
     sw.ax = clamp(sw.ax + sw.vx * st, -0.9, 0.9); sw.az = clamp(sw.az + sw.vz * st, -0.9, 0.9);
     // where the bag's axis is now: check its top, middle and bottom against the curved hull, the bulkhead and the lockers
     const dx = Math.sin(sw.ax), dy = -Math.cos(sw.ax) * Math.cos(sw.az), dz = Math.cos(sw.ax) * Math.sin(sw.az), s0 = -ringY + 0.2;
-    let hit = false, hitMe = false;
+    let hit = false, hitMe = false, meX = 0, meZ = 0, meDepth = 0;
     for (const d of [s0, s0 + BH * 0.5, s0 + BH]) {
       const x = PX + dx * d, y = PY + dy * d, z = PZ + dz * d;
       if (Math.hypot(x, y - CY) + BR > R - 0.04) hit = true;                       // hull plating
       if (z + BR > -4.14) hit = true;                                               // forward bulkhead (EDC poster wall)
       if (x + BR > 1.74 && z - BR < -6.24 && z > -7.3) hit = true;                  // lockers
-      if (mode === 'inside' && y > player.jy - 0.05 && y < player.jy + HEAD_H && Math.hypot(x - player.x, z - player.z) < BR + PLAYER_R - 0.01) hitMe = true;   // it swings into you
+      if (mode === 'inside' && y > player.jy - 0.05 && y < player.jy + HEAD_H && Math.hypot(x - player.x, z - player.z) < BR + PLAYER_R - 0.01) {   // it swings into you
+        hitMe = true; const dd = BR + PLAYER_R - Math.hypot(x - player.x, z - player.z); if (dd > meDepth) { meDepth = dd; meX = x; meZ = z; }
+      }
     }
+    let shoved = false;
     if (hitMe && !hit) {
-      // leaning on you: it comes to rest against you (no bounce, no twist), so standing still next to it stays still
+      // a heavy bag swinging back into you shoves you out of its way (it keeps swinging, a little slower), unless you're
+      // pinned against something -- then it stops against you. This is what keeps it from getting "glued" to you.
+      const ddx = player.x - meX, ddz = player.z - meZ, dl = Math.hypot(ddx, ddz) || 1, push = meDepth + 0.005;
+      const nx = player.x + ddx / dl * push, nz = player.z + ddz / dl * push;
+      for (const b of bagBlks) b.off = true; const free = !blocked(nx, nz); for (const b of bagBlks) b.off = false;
+      if (free) { player.x = nx; player.z = nz; shoved = true; const keep = Math.exp(-2.5 * st); sw.vx *= keep; sw.vz *= keep; }
+    }
+    if (hitMe && !hit && !shoved) {
+      // can't shove you (you're against a wall): it comes to rest against you (no bounce, no twist)
       const spd = Math.hypot(sw.vx, sw.vz) * L;
-      sw.ax = pax; sw.az = paz; sw.vx *= spd > 0.6 ? -0.2 : 0; sw.vz *= spd > 0.6 ? -0.2 : 0;
+      sw.ax = pax; sw.az = paz; const e = spd > 0.25 ? -0.4 : 0; sw.vx *= e; sw.vz *= e;   // a real swing bounces off you; a slow drift just stops
       if (spd > 0.6 && performance.now() - (sw.lastHit || 0) > 250) { sw.lastHit = performance.now(); noiseBurst(0.1, Math.min(0.35, spd * 0.18), 'lowpass', 400, 120, { brown: true }); }
-    } else if (hit || hitMe) {
+    } else if (hit) {
       const spd = Math.hypot(sw.vx, sw.vz) * L;
       const pin = sw.leaning ? 0 : -0.35;                                         // pinned between you and the wall: it just stops
       sw.ax = pax; sw.az = paz; sw.vx *= pin; sw.vz *= pin; if (spd > 0.4 && !sw.leaning) sw.vt += (Math.random() - 0.5) * 1.5;
@@ -1401,7 +1412,8 @@ poster('shark2', 0, 2.12, 19.97, PI, 1.5);          // engine room, stern wall a
       if (dist > 1e-4 && dist < PLAYER_R + BR + 0.03) {
         const nx = ddx / dist, nz = ddz / dist, into = player.wx * nx + player.wz * nz;
         if (into > 0) { sw.vx += nx * into * 1.2 * st / 3; sw.vz += nz * into * 1.2 * st / 3; }
-        sw.leaning = true; const damp = Math.exp(-14 * st / 3); sw.vx *= damp; sw.vz *= damp; sw.vt *= damp;   // leaning on it: your body soaks up the swing, so it settles against you
+        // only slow creeping motion is soaked up (that's what jittered); a punch or a real swing keeps going
+        if (Math.hypot(sw.vx, sw.vz) * L < 0.3) { sw.leaning = true; const damp = Math.exp(-14 * st / 3); sw.vx *= damp; sw.vz *= damp; sw.vt *= damp; }   // leaning on it: your body soaks up the swing, so it settles against you
       }
     }
   });
