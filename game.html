@@ -141,6 +141,15 @@
   #intro .pbtns button { font-family: Georgia, "Times New Roman", serif; font-size:20px; color:#e8c86a; background:rgba(13,27,46,.9); border:2px solid #d9b45a;
     padding:10px 0; width:240px; font-size:22px; cursor:pointer; letter-spacing:.12em; transition:background .2s, color .2s; }
   #intro .pbtns button:hover { background:#d9b45a; color:#0d1b2e; }
+  /* graphics quality: Low / Medium / High, same gold-on-navy look as the menu buttons */
+  .gfx { display:flex; flex-direction:column; align-items:center; gap:6px; margin-top:4px; }
+  .gfx .gl { font-family:Georgia, serif; font-size:12px; letter-spacing:.35em; padding-left:.35em; color:#e8c86a; opacity:.85; }
+  .gfx .gopts { display:flex; width:240px; border:2px solid #d9b45a; background:rgba(13,27,46,.9); }
+  #menu .gfx button, #intro .gfx button { flex:1; width:auto; display:block; padding:7px 0; font-family:Georgia, "Times New Roman", serif; font-size:16px; letter-spacing:.06em;
+    color:#e8c86a; background:transparent; border:0; border-left:1px solid rgba(217,180,90,.45); cursor:pointer; transition:background .2s, color .2s; }
+  #menu .gfx button:first-child, #intro .gfx button:first-child { border-left:0; }
+  #menu .gfx button:hover, #intro .gfx button:hover { background:rgba(217,180,90,.25); color:#f2e6c4; }
+  #menu .gfx button.on, #intro .gfx button.on { background:#d9b45a; color:#0d1b2e; }
   #secret { position:fixed; left:50%; top:22%; transform:translateX(-50%); z-index:9; pointer-events:none; opacity:0; visibility:hidden; text-align:center; }
   #secret.show { visibility:visible; animation:secretIn 4.5s ease both; }
   @keyframes secretIn { 0% { opacity:0; transform:translate(-50%, -20px) scale(.7); } 10% { opacity:1; transform:translate(-50%, 0) scale(1.05); } 16% { transform:translate(-50%, 0) scale(1); } 85% { opacity:1; } 100% { opacity:0; } }
@@ -330,7 +339,7 @@
 <div id="menu">
   <div class="mwrap">
     <div class="plaque"><span>USS GREAT WHITE SHARK</span></div>
-    <div class="mbtns"><button id="mPlay">Play</button><button id="mControls">Controls</button><button id="mScores">High Scores</button></div>
+    <div class="mbtns"><button id="mPlay">Play</button><button id="mControls">Controls</button><button id="mScores">High Scores</button><div class="gfx"><div class="gl">GRAPHICS</div><div class="gopts"><button type="button" data-gfx="low">Low</button><button type="button" data-gfx="medium">Medium</button><button type="button" data-gfx="high">High</button></div></div></div>
     <div class="mscores"><div class="mtitle">FASTEST SURFACINGS</div><ol class="board" id="mBoard"></ol><button id="mBack2">Back</button></div>
     <div class="mcontrols">
       <p class="mission">Bring the boat up from 240 m. Follow the caption at the bottom of the screen and the green marker through the 11-step surfacing procedure, then open the upper hatch and climb out on deck.</p>
@@ -395,7 +404,7 @@
   <div class="pwrap">
     <div class="plaque"><span>PAUSED</span></div>
     <div class="psub">USS GREAT WHITE SHARK</div>
-    <div class="pbtns"><button id="pResume">Resume</button><button id="pRestart">Restart</button></div>
+    <div class="pbtns"><button id="pResume">Resume</button><button id="pRestart">Restart</button><div class="gfx"><div class="gl">GRAPHICS</div><div class="gopts"><button type="button" data-gfx="low">Low</button><button type="button" data-gfx="medium">Medium</button><button type="button" data-gfx="high">High</button></div></div></div>
   </div>
 </div>
 
@@ -3484,6 +3493,7 @@ function groundAt(x, z, feet = Infinity) {
 const intro = $('intro');
 intro.addEventListener('click', e => {
   if (e.target.closest('#pRestart')) { location.reload(); return; }   // back to the title screen, fresh boat
+  if (e.target.closest('.gfx')) return;                               // graphics buttons: handled on their own, stay paused
   initAudio(); requestLock();
 });
 // playing with a controller: browsers won't grab the mouse for a gamepad button, so the game "locks" itself instead
@@ -5535,17 +5545,55 @@ function updateShadows(dt) {
   // (ignores the first seconds of play, while shaders compile, and judges a running average rather than single hitches)
   shadows.warm += dt; shadows.ema += (Math.min(dt, 0.2) - shadows.ema) * 0.05;
   if (shadows.warm > 10) shadows.slow = shadows.ema > 0.05 ? shadows.slow + dt : Math.max(0, shadows.slow - dt);
-  if (shadows.slow > 5 && !shadows.keep && ao.on) { ao.on = false; shadows.slow = 0; toast('Ambient occlusion switched off to keep things smooth.'); return; }   // the first thing to go
+  if (shadows.slow > 5 && !shadows.keep && ao.on) { ao.on = false; shadows.slow = 0; toast('Ambient occlusion switched off to keep things smooth.'); markGfx('medium'); return; }   // the first thing to go
   if (shadows.slow > 5 && !shadows.keep) {
     shadows.on = false; renderer.shadowMap.enabled = false; for (const L of lights) L.l.castShadow = false; extSun.castShadow = false; flash.castShadow = false;
     const redo = r => r.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); }); redo(world); redo(ext);
-    toast('Shadows switched off to keep things smooth.'); return;
+    toast('Shadows switched off to keep things smooth.'); markGfx('low'); return;
   }
   shadows.acc += dt; if (shadows.acc < 0.25) return; shadows.acc = 0;
   // the two lamps closest to you redraw their shadows every frame (moving bag, doors, hoist, you); the rest take turns refreshing
   const cp = camera.position, near = lights.map(L => [L, L.l.position.distanceToSquared(cp)]).sort((a, b) => a[1] - b[1]).slice(0, 2).map(a => a[0]);
   for (const L of lights) L.l.shadow.autoUpdate = false; shadows.near = near;
   shadows.rr = ((shadows.rr || 0) + 1) % lights.length; lights[shadows.rr].l.shadow.needsUpdate = true;
+}
+
+// ============================================================ graphics quality (pause menu + title menu)
+//  High:   everything (lamp shadows 512 px, sun 2048, ambient occlusion, bloom, full resolution)
+//  Medium: no ambient occlusion, half-size shadow maps, full resolution
+//  Low:    no shadows, no ambient occlusion, no bloom, 75% resolution
+// Picking one yourself is remembered in this browser and stops the automatic "keep it smooth" downgrades.
+const GFX_KEY = 'gwsGraphics';
+function markGfx(level) { document.querySelectorAll('.gfx button').forEach(b => b.classList.toggle('on', b.dataset.gfx === level)); }
+function redoMaterials() { const redo = r => r.traverse(o => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.needsUpdate = true); }); redo(world); redo(ext); }
+function setShadowsOn(on) {
+  if (shadows.on === on) return;
+  shadows.on = on; renderer.shadowMap.enabled = on;
+  for (const L of lights) { L.l.castShadow = on; if (on) L.l.shadow.needsUpdate = true; }
+  extSun.castShadow = on; flash.castShadow = on && flashOn;
+  redoMaterials();
+}
+function setShadowRes(n, sun) {
+  const set = (sh, k) => { if (sh.mapSize.x === k) return; sh.mapSize.set(k, k); if (sh.map) { sh.map.dispose(); sh.map = null; } sh.needsUpdate = true; };
+  for (const L of lights) set(L.l.shadow, n); set(extSun.shadow, sun);
+}
+function applyGfx(level, byUser) {
+  const base = Math.min(window.devicePixelRatio || 1, 2);
+  setShadowsOn(level !== 'low');
+  if (level !== 'low') setShadowRes(level === 'high' ? 512 : 256, level === 'high' ? 2048 : 1024);
+  ao.on = level === 'high' && !new URLSearchParams(location.search).has('noao');
+  const pp = window.__post; if (pp) pp.bloom.enabled = level !== 'low';
+  dynRes.max = base * (level === 'low' ? 0.75 : 1); dynRes.pr = dynRes.max; dynRes.ema = 1 / 60;
+  renderer.setPixelRatio(dynRes.pr); if (pp) pp.composer.setPixelRatio(dynRes.pr); onResize();
+  shadows.slow = 0; shadows.ema = 1 / 60; if (byUser) shadows.keep = true;
+  markGfx(level);
+  if (byUser) { try { localStorage.setItem(GFX_KEY, level); } catch {} }
+}
+document.querySelectorAll('.gfx button').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); if (typeof sfxClick === 'function') sfxClick(); applyGfx(b.dataset.gfx, true); }));
+{
+  let saved = null; try { saved = localStorage.getItem(GFX_KEY); } catch {}
+  if (new URLSearchParams(location.search).has('trailer') || !['low', 'medium', 'high'].includes(saved)) markGfx('high');   // default: everything on (auto-downgrades if it struggles)
+  else applyGfx(saved, false), shadows.keep = true;
 }
 
 camera.position.set(player.x, EYE, player.z);
